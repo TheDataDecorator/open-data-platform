@@ -1,0 +1,300 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U data -d warehouse"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    env_file:
+      - ../.env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - backend
+    restart: always
+
+  airflow:
+    image: apache/airflow:2.8.1
+    container_name: airflow
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - ../.env
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://data:${POSTGRES_PASSWORD}@postgres/airflow_db
+      CONNECTION_CHECK_MAX_COUNT: "0"
+    volumes:
+      - ../airflow/dags:/opt/airflow/dags
+    networks:
+      - backend
+    ports:
+      - "8080:8080"   # remove in production if needed
+    command: >
+      bash -c "
+      airflow db migrate &&
+      airflow users create --username ${AF_USERNAME} --firstname Admin --lastname User --role Admin --email ${AF_EMAIL} --password ${AF_PASSWORD} || true &&
+      (airflow webserver & airflow scheduler)"
+    restart: always
+
+  dbt:
+    image: ghcr.io/dbt-labs/dbt-postgres:latest
+    container_name: dbt
+    volumes:
+      - ../dbt:/usr/app
+    working_dir: /usr/app
+    networks:
+      - backend
+    entrypoint: ["tail", "-f", "/dev/null"]
+
+  superset:
+    image: apache/superset:latest
+    container_name: superset
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - ../.env    
+    environment:
+    - SUPERSET_SECRET_KEY=${SUPERSET_SECRET_KEY}
+    - SQLALCHEMY_DATABASE_URI=${SQLALCHEMY_DATABASE_URI}
+    - SUPERSET_EMAIL=${SUPERSET_EMAIL}
+    - SUPERSET_PASSWORD=${SUPERSET_PASSWORD}
+    - SUPERSET_ADMIN=${SUPERSET_ADMIN}
+    networks:
+      - backend
+      - frontend
+    restart: always
+    ports:
+      - "8088:8088"
+    volumes:
+    - ../superset/bootstrap.sh:/bootstrap.sh
+    - ./requirements-local.txt:/requirements-local.txt
+    - ../superset/superset_config.py:/app/pythonpath/superset_config.py 
+    - superset_home:/app/superset_home
+    user: "root"
+    command: ["/bin/bash", "/bootstrap.sh"]
+
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    depends_on:
+      - superset
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ../nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ../nginx/certs:/etc/nginx/certs
+      - ../www:/usr/share/nginx/html:ro
+    networks:
+      - frontend
+      - backend
+    restart: always
+
+  nifi:
+    image: apache/nifi:2.8.0
+    container_name: nifi
+    user: "root"
+    # Port 8443 on your laptop maps to 8443 (HTTPS) inside the container
+    ports:
+      - "8443:8443" 
+    environment:
+      # NiFi 2.x requires the password to be at least 12 characters
+      - SINGLE_USER_CREDENTIALS_USERNAME=${NIFI_USERNAME}
+      - SINGLE_USER_CREDENTIALS_PASSWORD=${NIFI_PASSWORD}
+      # We must use HTTPS variables for 2.x to stay stable
+      - NIFI_WEB_HTTPS_HOST=0.0.0.0
+      - NIFI_WEB_HTTPS_PORT=8443
+      - NIFI_WEB_PROXY_HOST=localhost:8081
+    volumes:
+      - nifi_data:/opt/nifi/nifi-current/database_repository
+      - nifi_flow:/opt/nifi/nifi-current/flowfile_repository
+      - nifi_content:/opt/nifi/nifi-current/content_repository
+      - nifi_provenance:/opt/nifi/nifi-current/provenance_repository
+      - ../nifi/drivers:/opt/nifi/drivers
+      - ../nifi/inbox:/inbox
+      - nifi_conf:/opt/nifi/nifi-current/conf
+    entrypoint: 
+      - /bin/bash
+      - -c
+      - |
+        chown -R 1000:1000 /inbox
+        exec /opt/nifi/scripts/start.sh
+    networks:
+      - backend
+    restart: always
+
+  # 💾 Backup service (runs continuously, you trigger manually or via cron)
+  backup:
+    image: postgres:15
+    container_name: backup
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - ../.env
+    volumes:
+      - backups:/backups
+    entrypoint: >
+      /bin/sh -c "
+      while true; do
+        sleep 86400;
+        pg_dump -h postgres -U ${POSTGRES_USER} ${POSTGRES_DB} > /backups/backup_$(date +%F).sql;
+      done
+      "
+    networks:
+      - backend
+    restart: always
+
+
+# Postgres GUI (The "Frontend" for your DB)
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+
+      DB_PASS: ${POSTGRES_PASSWORD}
+      DB_USER: ${POSTGRES_USER}
+
+      # This tells pgAdmin to keep logs in the writable volume
+      PGADMIN_CONFIG_LOG_FILE: "'/var/lib/pgadmin/pgadmin4.log'"
+      PGADMIN_CONFIG_SQLITE_PATH: "'/var/lib/pgadmin/pgadmin4.db'"
+      PGADMIN_CONFIG_SESSION_DB_PATH: "'/var/lib/pgadmin/sessions'"
+      PGADMIN_CONFIG_STORAGE_DIR: "'/var/lib/pgadmin/storage'"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - pgadmin_logs:/var/log/pgadmin
+    networks:
+      - backend
+      - frontend
+    ports:
+      - "5050:80"
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+
+        echo "Starting pgAdmin normally..."
+
+        # Start pgAdmin in background
+        /entrypoint.sh &
+
+        # Wait for pgAdmin to initialise DB
+        echo "Waiting for pgAdmin to initialise..."
+        sleep 10
+
+        echo "Injecting server config..."
+
+        # Create servers.json dynamically
+        cat > /tmp/servers.json <<EOF
+        {
+          "Servers": {
+            "1": {
+              "Name": "Data Warehouse",
+              "Group": "Servers",
+              "Host": "postgres",
+              "Port": 5432,
+              "MaintenanceDB": "warehouse",
+              "Username": "${POSTGRES_USER}",
+              "SSLMode": "prefer"
+            }
+          }
+        }
+        EOF
+
+        # Load servers into pgAdmin (NOW DB exists)
+        /venv/bin/python3 /pgadmin4/setup.py load-servers /tmp/servers.json --user ${PGADMIN_EMAIL} || true
+
+        echo "pgAdmin ready."
+
+        # Keep container alive
+        wait
+    restart: always
+
+  dbt-docs-gen:
+    image: ghcr.io/dbt-labs/dbt-postgres:latest
+    container_name: dbt_docs_gen
+    working_dir: /usr/app
+    env_file:
+      - ../.env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ../dbt:/usr/app
+      - ../dbt/analytics/profiles.yml:/root/.dbt/profiles.yml
+      - dbt_docs:/usr/app/target
+    entrypoint: >
+      /bin/sh -c "
+      dbt deps &&
+      dbt docs generate --target-path /usr/app/target &&
+      echo 'docs generated' &&
+      while true; do
+        dbt docs generate --target-path /usr/app/target
+        sleep 3600
+      done
+      "
+    networks:
+      - backend 
+    restart: always
+
+  dbt-docs:
+    image: nginx:stable-alpine
+    container_name: dbt_docs
+    volumes:
+      - dbt_docs:/usr/share/nginx/html:ro
+    ports:
+      - "8082:80"
+    networks:
+      - frontend
+    restart: always
+
+
+  docker-status:
+    image: python:3.12-slim
+    container_name: docker_status_api
+
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./app.py:/app/app.py
+
+    working_dir: /app
+
+    command: >
+      sh -c "pip install flask docker flask-cors &&
+            python app.py"
+
+    ports:
+      - "9000:9000"
+
+    networks:
+      - frontend
+      - backend
+
+
+volumes:
+  postgres_data:
+  backups:
+  nifi_data:
+  nifi_flow:
+  nifi_conf:
+  nifi_content:
+  nifi_provenance:
+  nifi_drivers:
+  superset_home:
+  pgadmin_data:
+  pgadmin_logs:
+  dbt_docs:
+
+networks:
+  backend:
+  frontend:
