@@ -86,5 +86,5 @@ A custom Docker Status API (Python 3.12 / Flask) communicates directly with the 
 
 ### 📝 Maintenance
 - **Adding Drivers**: Drop .jar files into ./nifi/drivers to make them available to NiFi processors
-- **ADB Init**: Custom SQL in ./init-db.sql will run automatically on the first initialization of the Postgres container
-- **ALogs**: pgAdmin logs are persisted to a named volume for persistent troubleshooting
+- **DB Init**: Custom SQL in ./init-db.sql will run automatically on the first initialization of the Postgres container
+- **Logs**: pgAdmin logs are persisted to a named volume for persistent troubleshooting
