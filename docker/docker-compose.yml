@@ -184,41 +184,40 @@ services:
       - -c
       - |
         set -e
-
-        echo "Starting pgAdmin normally..."
-
-        # Start pgAdmin in background
+        # Ensure the storage directory exists before we try to use it
+        mkdir -p /var/lib/pgadmin/storage
+        
         /entrypoint.sh &
 
-        # Wait for pgAdmin to initialise DB
-        echo "Waiting for pgAdmin to initialise..."
-        sleep 10
+        # Use the storage subdir which is definitely persistent
+        if [ ! -f /var/lib/pgadmin/storage/.init_lock ]; then
+            echo "CHECK: No lock found. Waiting 20s..."
+            sleep 20
 
-        echo "Injecting server config..."
-
-        # Create servers.json dynamically
-        cat > /tmp/servers.json <<EOF
-        {
-          "Servers": {
-            "1": {
-              "Name": "Data Warehouse",
-              "Group": "Servers",
-              "Host": "postgres",
-              "Port": 5432,
-              "MaintenanceDB": "warehouse",
-              "Username": "${POSTGRES_USER}",
-              "SSLMode": "prefer"
+            cat > /tmp/servers.json <<EOF
+            {
+              "Servers": {
+                "1": {
+                  "Name": "Data Warehouse",
+                  "Group": "Servers",
+                  "Host": "postgres",
+                  "Port": 5432,
+                  "MaintenanceDB": "warehouse",
+                  "Username": "${POSTGRES_USER}",
+                  "SSLMode": "prefer"
+                }
+              }
             }
-          }
-        }
         EOF
 
-        # Load servers into pgAdmin (NOW DB exists)
-        /venv/bin/python3 /pgadmin4/setup.py load-servers /tmp/servers.json --user ${PGADMIN_EMAIL} || true
-
-        echo "pgAdmin ready."
-
-        # Keep container alive
+            /venv/bin/python3 /pgadmin4/setup.py load-servers /tmp/servers.json --user ${PGADMIN_EMAIL} || echo "Already exists."
+            
+            # Write the lock to the storage volume
+            echo "locked" > /var/lib/pgadmin/storage/.init_lock
+            echo "CHECK: Lock file created in storage."
+        else
+            echo "CHECK: Lock file found. Skipping injection."
+        fi
         wait
     restart: always
 
