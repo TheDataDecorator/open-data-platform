@@ -114,6 +114,9 @@ services:
       - NIFI_WEB_HTTPS_PORT=8443
       - NIFI_WEB_PROXY_HOST=localhost:8081
       - NIFI_SENSITIVE_PROPS_KEY=${NIFI_SENSITIVE_PROPS_KEY}
+      - NIFI_WEB_HTTPS_MAX_CONTENT_SIZE=500MB
+      - NIFI_JVM_HEAP_INIT=1024m
+      - NIFI_JVM_MAX_HEAP_SIZE=3072m
     volumes:
       - nifi_data:/opt/nifi/nifi-current/database_repository
       - nifi_flow:/opt/nifi/nifi-current/flowfile_repository
@@ -127,6 +130,8 @@ services:
       - -c
       - |
         chown -R 1000:1000 /inbox
+        sed -i "s|Xms.*|Xms$${NIFI_JVM_HEAP_INIT}|" /opt/nifi/nifi-current/conf/bootstrap.conf;
+        sed -i "s|Xmx.*|Xmx$${NIFI_JVM_MAX_HEAP_SIZE}|" /opt/nifi/nifi-current/conf/bootstrap.conf;        
         exec /opt/nifi/scripts/start.sh
     networks:
       - backend

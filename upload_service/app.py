@@ -5,6 +5,7 @@ from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 CORS(app)  # Allows your frontend to talk to this API
+app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
 
 # This MUST match the volume path mapped in Docker
 UPLOAD_FOLDER = '/inbox'
