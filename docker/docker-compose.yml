@@ -83,7 +83,8 @@ services:
   nginx:
     image: nginx:latest
     container_name: nginx
-    depends_on:
+    depends_on:    
+      - upload-api
       - superset
     ports:
       - "80:80"
@@ -279,6 +280,18 @@ services:
     networks:
       - frontend
       - backend
+
+  upload-api:
+      image: python:3.12-slim
+      container_name: upload_api
+      volumes:
+        - ../nifi/inbox:/inbox
+        - ../upload_service/app.py:/app/app.py
+      working_dir: /app
+      command: sh -c "pip install flask flask-cors && python app.py"
+      networks:
+        - backend
+      restart: always
 
 
 volumes:
