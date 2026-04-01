@@ -28,6 +28,10 @@ services:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://data:${POSTGRES_PASSWORD}@postgres/airflow_db
       CONNECTION_CHECK_MAX_COUNT: "0"
+      AIRFLOW__WEBSERVER__WORKERS: 2
+      AIRFLOW__SCHEDULER__PARSING_PROCESSES: 2
+      AIRFLOW__CORE__PARALLELISM: 4
+      AIRFLOW__CORE__MAX_ACTIVE_TASKS_PER_DAG: 4
     volumes:
       - ../airflow/dags:/opt/airflow/dags
     networks:
