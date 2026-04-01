@@ -4,7 +4,7 @@ CREATE DATABASE superset_db;
 CREATE DATABASE nifi_db; -- For future-proofing
 
 -- The Actual Data (The "Goods")
-CREATE DATABASE warehouse;
+-- CREATE DATABASE warehouse;
 
 -- Permissions
 GRANT ALL PRIVILEGES ON DATABASE airflow_db TO data;
