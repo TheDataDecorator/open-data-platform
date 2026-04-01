@@ -132,6 +132,7 @@ services:
         chown -R 1000:1000 /inbox
         sed -i "s|Xms.*|Xms$${NIFI_JVM_HEAP_INIT}|" /opt/nifi/nifi-current/conf/bootstrap.conf;
         sed -i "s|Xmx.*|Xmx$${NIFI_JVM_MAX_HEAP_SIZE}|" /opt/nifi/nifi-current/conf/bootstrap.conf;        
+        sed -i 's/java.arg.13=.*/java.arg.13=-XX:MaxGCPauseMillis=20/' /opt/nifi/nifi-current/conf/bootstrap.conf;
         exec /opt/nifi/scripts/start.sh
     networks:
       - backend
