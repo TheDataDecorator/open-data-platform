@@ -16,7 +16,7 @@ GRANT ALL PRIVILEGES ON DATABASE warehouse TO data;
 \c warehouse;
 
 -- 1. RAW: Where NiFi drops the data (unfiltered, messy)
-CREATE SCHEMA IF NOT EXISTS raw;
+CREATE SCHEMA IF NOT EXISTS raw_data;
 
 -- 2. STAGING: Where dbt cleans the data (standardized types/names)
 CREATE SCHEMA IF NOT EXISTS staging;
@@ -25,6 +25,9 @@ CREATE SCHEMA IF NOT EXISTS staging;
 CREATE SCHEMA IF NOT EXISTS analytics;
 
 -- 4. Set Permissions (The "Safety" Layer)
-GRANT ALL PRIVILEGES ON SCHEMA raw TO data;
+GRANT ALL PRIVILEGES ON SCHEMA raw_data TO data;
 GRANT ALL PRIVILEGES ON SCHEMA staging TO data;
 GRANT ALL PRIVILEGES ON SCHEMA analytics TO data;
+ALTER SCHEMA raw_data OWNER TO data;
+ALTER SCHEMA staging OWNER TO data;
+ALTER SCHEMA analytics OWNER TO data;
