@@ -6,3 +6,4 @@ postgres_data/
 target/
 dbt_packages/
 dbt/logs/
+data_samples/*.csv
