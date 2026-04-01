@@ -113,6 +113,7 @@ services:
       - NIFI_WEB_HTTPS_HOST=0.0.0.0
       - NIFI_WEB_HTTPS_PORT=8443
       - NIFI_WEB_PROXY_HOST=localhost:8081
+      - NIFI_SENSITIVE_PROPS_KEY=${NIFI_SENSITIVE_PROPS_KEY}
     volumes:
       - nifi_data:/opt/nifi/nifi-current/database_repository
       - nifi_flow:/opt/nifi/nifi-current/flowfile_repository
