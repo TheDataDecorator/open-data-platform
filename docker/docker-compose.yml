@@ -46,6 +46,7 @@ services:
       - "8080:8080"   # remove in production if needed
     command: >
       bash -c "
+      pip install dbt-postgres==1.7.0 &&
       airflow db migrate &&
       airflow users create --username ${AF_USERNAME} --firstname Admin --lastname User --role Admin --email ${AF_EMAIL} --password ${AF_PASSWORD} || true &&
       (airflow webserver & airflow scheduler)"

@@ -10,7 +10,7 @@ models:
   analytics: # Match the 'name' of the project above
     staging:
       +schema: staging
-      +materialized: view  # Fast for 8GB VPS
+      +materialized: table  # Fast for 8GB VPS
     marts:
       +schema: analytics
       +materialized: table # Final clean tables for Superset
