@@ -1,10 +1,16 @@
-name: analytics
-version: "1.0.0"
+name: 'analytics'
+version: '1.0.0'
+config-version: 2
 
-profile: analytics
+profile: 'analytics' # Must match the top-level name in profiles.yml
 
 model-paths: ["models"]
 
 models:
-  analytics:
-    +materialized: view
+  analytics: # Match the 'name' of the project above
+    staging:
+      +schema: staging
+      +materialized: view  # Fast for 8GB VPS
+    marts:
+      +schema: analytics
+      +materialized: table # Final clean tables for Superset

@@ -1,0 +1,22 @@
+analytics:
+  target: dev  # Default target
+  outputs:
+    dev:       # This is your "Silver/Staging" layer
+      type: postgres
+      host: postgres
+      user: "{{ env_var('POSTGRES_USER') }}"
+      password: "{{ env_var('POSTGRES_PASSWORD') }}"
+      port: 5432
+      dbname: warehouse
+      schema: staging
+      threads: 1
+
+    prod:      # This is your "Gold/Analytics" layer
+      type: postgres
+      host: postgres
+      user: "{{ env_var('POSTGRES_USER') }}"
+      password: "{{ env_var('POSTGRES_PASSWORD') }}"
+      port: 5432
+      dbname: warehouse
+      schema: analytics
+      threads: 1

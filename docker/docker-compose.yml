@@ -19,6 +19,7 @@ services:
   airflow:
     image: apache/airflow:2.8.1
     container_name: airflow
+    user: "${AIRFLOW_UID:-50000}:0"
     depends_on:
       postgres:
         condition: service_healthy
@@ -32,8 +33,13 @@ services:
       AIRFLOW__SCHEDULER__PARSING_PROCESSES: 2
       AIRFLOW__CORE__PARALLELISM: 4
       AIRFLOW__CORE__MAX_ACTIVE_TASKS_PER_DAG: 4
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      _PIP_ADDITIONAL_DEPENDENCIES: dbt-postgres==1.7.0
+      POSTGRES_USER: ${POSTGRES_USER}
     volumes:
       - ../airflow/dags:/opt/airflow/dags
+      - ../dbt:/opt/airflow/dbt
+      - ../requirements.txt:/requirements.txt
     networks:
       - backend
     ports:
