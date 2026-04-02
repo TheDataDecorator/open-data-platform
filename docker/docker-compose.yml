@@ -36,6 +36,9 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       _PIP_ADDITIONAL_DEPENDENCIES: dbt-postgres==1.7.0
       POSTGRES_USER: ${POSTGRES_USER}
+
+      PATH: "/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/airflow/.local/bin"
+
     volumes:
       - ../airflow/dags:/opt/airflow/dags
       - ../dbt:/opt/airflow/dbt

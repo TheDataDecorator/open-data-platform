@@ -1,4 +1,4 @@
--- This takes the 500MB raw table and cleans it up
+-- This takes the raw table and cleans it up
 WITH raw_data AS (
     SELECT * FROM {{ source('raw', 'raw_customers') }}
 )

@@ -11,6 +11,6 @@ models:
     staging:
       +schema: staging
       +materialized: table  # Fast for 8GB VPS
-    marts:
+    analytics:
       +schema: analytics
       +materialized: table # Final clean tables for Superset

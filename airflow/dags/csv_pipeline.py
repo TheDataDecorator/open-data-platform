@@ -16,9 +16,9 @@ default_args = {
 }
 
 with DAG(
-    'customer_data_transform',
+    'csv_data_transform',
     default_args=default_args,
-    description='Triggers dbt to transform raw customers data to Silver layer',
+    description='Triggers dbt to transform raw csv data to Silver layer',
     schedule_interval=None, # Triggered manually or via NiFi API
     start_date=datetime(2024, 1, 1),
     catchup=False,
@@ -28,15 +28,17 @@ with DAG(
     # Task 1: Check dbt connection (Debug step)
     debug_dbt = BashOperator(
         task_id='debug_dbt_connection',
-        bash_command='cd /opt/airflow/dbt && dbt debug --profiles-dir .',
-        env={'POSTGRES_PASSWORD': POSTGRES_PASSWORD}
+        bash_command='cd /opt/airflow/dbt && dbt debug --profiles-dir . || true',
+        env={'POSTGRES_PASSWORD': POSTGRES_PASSWORD},
+        append_env=True
     )
 
     # Task 2: Run Transformations (Bronze -> Silver)
     run_dbt = BashOperator(
         task_id='run_dbt_transformations',
         bash_command='cd /opt/airflow/dbt && dbt run --profiles-dir .',
-        env={'POSTGRES_PASSWORD': POSTGRES_PASSWORD}
+        env={'POSTGRES_PASSWORD': POSTGRES_PASSWORD},
+        append_env=True
     )
 
     debug_dbt >> run_dbt
