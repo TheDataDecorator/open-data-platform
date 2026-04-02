@@ -166,7 +166,7 @@ services:
     entrypoint: >
       /bin/sh -c "
       while true; do
-        sleep 86400;
+        sleep 21600;
         pg_dump -h postgres -U ${POSTGRES_USER} ${POSTGRES_DB} > /backups/backup_$(date +%F).sql;
       done
       "
