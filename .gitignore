@@ -7,3 +7,4 @@ target/
 dbt_packages/
 dbt/logs/
 data_samples/*.csv
+backups/

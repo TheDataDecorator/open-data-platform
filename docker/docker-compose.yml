@@ -154,25 +154,39 @@ services:
 
   # 💾 Backup service (runs continuously, you trigger manually or via cron)
   backup:
-    image: postgres:15
-    container_name: backup
-    depends_on:
-      postgres:
-        condition: service_healthy
-    env_file:
-      - ../.env
-    volumes:
-      - backups:/backups
-    entrypoint: >
-      /bin/sh -c "
-      while true; do
-        sleep 21600;
-        pg_dump -h postgres -U ${POSTGRES_USER} ${POSTGRES_DB} > /backups/backup_$(date +%F).sql;
-      done
-      "
-    networks:
-      - backend
-    restart: always
+      image: postgres:15
+      container_name: backup
+      depends_on:
+        postgres:
+          condition: service_healthy
+      env_file:
+        - ../.env
+      environment:
+        # This allows pg_dump to run without a password prompt
+        PGPASSWORD: ${POSTGRES_PASSWORD}
+      volumes:
+        - ./backups:/backups
+      entrypoint: >
+        /bin/sh -c "
+        while true; do
+          FILENAME=/backups/backup_$$(date +%Y-%m-%d_%H-%M).sql.xz;
+          echo \"Starting extreme compression to $$FILENAME...\";
+          
+          # pg_dump piped into xz at max level 9
+          pg_dump -h postgres -U ${POSTGRES_USER} -d ${POSTGRES_DB} | xz -9 > $$FILENAME;
+
+          echo \"Cleanup and Rotation...\";
+          find /backups -name 'backup_*.sql.xz' -mtime +7 \
+            ! -name 'backup_*-01_*.sql.xz' \
+            -exec rm {} +;
+
+          echo \"Done. Sleeping 6 hours...\";
+          sleep 21600;
+        done
+        "
+      networks:
+        - backend
+      restart: always
 
 
 # Postgres GUI (The "Frontend" for your DB)
