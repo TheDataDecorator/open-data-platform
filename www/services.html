@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Services Page</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css">
+    <style>
+        body {
+            max-width: 1100px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .card {
+            border: 1px solid #ddd;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+
+        .status {
+            font-weight: bold;
+        }
+
+        .running {
+            color: #2ecc71;
+        }
+
+        .exited {
+            color: #e74c3c;
+        }
+
+        .paused {
+            color: #f39c12;
+        }
+
+        button {
+            margin-top: 6px;
+        }
+
+        code {
+            font-size: 12px;
+        }
+
+        /* Progress Bar Styling */
+        #upload-container {
+            margin-top: 20px;
+            border-top: 2px solid #444;
+            padding-top: 15px;
+        }
+
+        .progress-wrapper {
+            width: 100%;
+            background-color: #333;
+            border-radius: 5px;
+            margin: 10px 0;
+            display: none;
+            height: 12px;
+            overflow: hidden;
+        }
+
+        #progress-bar {
+            width: 0%;
+            height: 100%;
+            background-color: #007bff;
+            transition: width 0.2s;
+        }
+
+        #upload-status {
+            font-size: 0.85rem;
+            margin-top: 5px;
+            min-height: 1.2em;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Services Page</h1>
+
+    <div class="grid">
+        <section>
+            <h3>Select Services</h3>
+            <form id="serviceForm">
+                <label for="services">Choose Service:</label>
+                <select id="services" name="services">
+                    <option value="">Select...</option>
+                    <option value="service1">Service 1</option>
+                    <option value="service2">Service 2</option>
+                    <!-- Add more services as needed -->
+                </select>
+            </form>
+        </section>
+
+        <section>
+            <h3>Filter Services</h3>
+            <input type="text" id="filterInput" placeholder="Search...">
+        </section>
+    </div>
+
+    <script>
+        document.getElementById('serviceForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const selectedService = document.getElementById('services').value;
+            if (selectedService) {
+                alert(`You selected: ${selectedService}`);
+            } else {
+                alert('Please select a service');
+            }
+        });
+
+        document.getElementById('filterInput').addEventListener('input', function() {
+            const filterValue = this.value.toLowerCase();
+            const services = document.querySelectorAll('#services option');
+            services.forEach(service => {
+                if (service.text.toLowerCase().includes(filterValue)) {
+                    service.style.display = '';
+                } else {
+                    service.style.display = 'none';
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>
